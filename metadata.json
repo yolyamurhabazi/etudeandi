@@ -1,0 +1,6 @@
+{
+  "name": "ENAFEP Coach",
+  "description": "Application interactive d'étude pour préparer l'Examen National de Fin d'Études Primaires (ENAFEP) en RDC (Français, Mathématiques, Sciences et Culture Générale).",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

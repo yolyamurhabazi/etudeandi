@@ -1,0 +1,23 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..950;1,400..950&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Playfair Display", Georgia, ui-serif, serif;
+  
+  --color-natural-bg: #FDFBF7;
+  --color-natural-text: #3D3B33;
+  --color-natural-primary: #5A5A40;
+  --color-natural-primary-dark: #4A4A34;
+  --color-natural-sidebar: #F5F1E9;
+  --color-natural-border: #E6DFD3;
+  --color-natural-secondary: #8C867A;
+  --color-natural-sub: #5A564D;
+  --color-natural-card: #FFFFFF;
+  --color-natural-pill: #F1EDE4;
+  
+  --color-natural-success-bg: #D7E3D3;
+  --color-natural-success-border: #B8CBB2;
+  --color-natural-success-text: #2D3A2B;
+  --color-natural-success-sub: #4A5D48;
+}
