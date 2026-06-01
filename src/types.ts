@@ -57,3 +57,14 @@ export interface ExplanationsResponse {
   hint: string;
   explanation: string;
 }
+
+export interface CelebrationBubble {
+  id: number;
+  x: number;
+  drift: number;
+  size: number;
+  gradientColor: string;
+  duration: number;
+  delay: number;
+  scaleMultiplier: number;
+}

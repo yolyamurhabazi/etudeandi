@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { PREDEFINED_QUESTIONS } from './questions';
-import { CategoryKey, CategoryInfo, Question, StudySession, ChatMessage } from './types';
+import { CategoryKey, CategoryInfo, Question, StudySession, ChatMessage, CelebrationBubble } from './types';
 import { getQuestionHint } from './utils/hints';
 
 // Informations d'affichage des matières/catégories
@@ -110,6 +110,90 @@ export default function App() {
 
   // Indice direct révélé pour la question actuelle
   const [revealedHint, setRevealedHint] = useState<string | null>(null);
+
+  // Bulles célébration actives pour effet "boule d'ambiance"
+  const [celebrationBubbles, setCelebrationBubbles] = useState<CelebrationBubble[]>([]);
+
+  // Gradients de couleurs festives pour les boules d'ambiance
+  const BUBBLE_GRADIENTS = [
+    'radial-gradient(circle at 30% 30%, rgba(253, 224, 71, 0.75), rgba(234, 179, 8, 0.85))', // Gold
+    'radial-gradient(circle at 30% 30%, rgba(52, 211, 153, 0.75), rgba(16, 185, 129, 0.85))', // Emerald
+    'radial-gradient(circle at 30% 30%, rgba(96, 165, 250, 0.75), rgba(37, 99, 235, 0.85))', // Blue
+    'radial-gradient(circle at 30% 30%, rgba(244, 114, 182, 0.75), rgba(219, 39, 119, 0.85))', // Pink
+    'radial-gradient(circle at 30% 30%, rgba(139, 92, 246, 0.75), rgba(109, 40, 217, 0.85))', // Purple
+    'radial-gradient(circle at 30% 30%, rgba(251, 146, 60, 0.75), rgba(234, 88, 12, 0.85))', // Orange
+  ];
+
+  // Synthétiseur audio chiptune/chime pour fêter la victoire (Pentatonique C Majeur)
+  const playSuccessSound = () => {
+    try {
+      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContext) return;
+      const ctx = new AudioContext();
+      
+      const playTone = (freq: number, startTime: number, duration: number) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        
+        osc.type = 'sine'; // Ton pur très propre
+        osc.frequency.setValueAtTime(freq, startTime);
+        
+        gain.gain.setValueAtTime(0, startTime);
+        gain.gain.linearRampToValueAtTime(0.18, startTime + 0.04);
+        gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+        
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        
+        osc.start(startTime);
+        osc.stop(startTime + duration);
+      };
+      
+      const now = ctx.currentTime;
+      // Succession rapide ascendante de notes célestes
+      playTone(523.25, now, 0.35);        // C5
+      playTone(587.33, now + 0.08, 0.35);  // D5
+      playTone(659.25, now + 0.16, 0.35);  // E5
+      playTone(783.99, now + 0.24, 0.35);  // G5
+      playTone(880.00, now + 0.32, 0.35);  // A5
+      playTone(1046.50, now + 0.40, 0.55); // C6 (clochette finale magique)
+    } catch (e) {
+      console.warn("L'API Web Audio est inactive ou restreinte sur ce navigateur.", e);
+    }
+  };
+
+  // Lance l'effet complet : chœur sonore + envolée de boules de célébration
+  const triggerCelebration = () => {
+    playSuccessSound();
+
+    const newBubbles: CelebrationBubble[] = Array.from({ length: 30 }).map((_, idx) => {
+      const size = Math.floor(Math.random() * 45) + 20; // 20px à 65px
+      const x = Math.floor(Math.random() * 90) + 5; // 5vw à 95vw
+      const drift = (Math.random() * 14) - 7; // -7vw à +7vw
+      const gradientColor = BUBBLE_GRADIENTS[Math.floor(Math.random() * BUBBLE_GRADIENTS.length)];
+      const duration = Math.random() * 1.8 + 2.4; // 2.4s à 4.2s d'envolée
+      const delay = Math.random() * 0.9; // délai étagé
+      const scaleMultiplier = Math.random() * 0.4 + 0.95;
+
+      return {
+        id: Date.now() + idx,
+        x,
+        drift,
+        size,
+        gradientColor,
+        duration,
+        delay,
+        scaleMultiplier
+      };
+    });
+
+    setCelebrationBubbles(newBubbles);
+
+    // Nettoyage après 5,5 secondes
+    setTimeout(() => {
+      setCelebrationBubbles([]);
+    }, 5500);
+  };
 
   // Vue active de l'application ('student' pour l'élève ou 'teacher' pour l'enseignant)
   const [activeView, setActiveView] = useState<'student' | 'teacher'>('student');
@@ -304,6 +388,9 @@ export default function App() {
 
       // Effacer l'explication intermédiaire s'il y en avait une
       setTutorExplanation(null);
+
+      // Célébration festive de la bonne réponse
+      triggerCelebration();
     } else {
       // Mauvaise réponse cliquée
       setSession(prev => {
@@ -1665,6 +1752,52 @@ export default function App() {
           </div>
         </div>
       </footer>
+
+      {/* EFFET DE BOULES D'AMBIANCE OU DE CÉLÉBRATION CHATOYANTE */}
+      <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
+        <AnimatePresence>
+          {celebrationBubbles.map((bubble) => (
+            <motion.div
+              key={bubble.id}
+              initial={{ 
+                x: `${bubble.x}vw`, 
+                y: '105vh', 
+                scale: 0.1, 
+                opacity: 0 
+              }}
+              animate={{ 
+                x: [
+                  `${bubble.x}vw`, 
+                  `${bubble.x + bubble.drift}vw`, 
+                  `${bubble.x - bubble.drift}vw`, 
+                  `${bubble.x + (bubble.drift * 0.4)}vw`
+                ],
+                y: '-15vh',
+                scale: [0.1, bubble.scaleMultiplier, bubble.scaleMultiplier * 1.1, 0.4],
+                opacity: [0, 0.95, 0.85, 0]
+              }}
+              exit={{ opacity: 0, scale: 0.2 }}
+              transition={{ 
+                duration: bubble.duration, 
+                delay: bubble.delay,
+                ease: [0.25, 0.46, 0.45, 0.94]
+              }}
+              className="absolute rounded-full pointer-events-none mix-blend-multiply flex items-center justify-center"
+              style={{
+                width: bubble.size,
+                height: bubble.size,
+                background: bubble.gradientColor,
+                boxShadow: 'inset -4px -4px 10px rgba(0,0,0,0.12), 0 6px 15px rgba(0,0,0,0.14)',
+                border: '1.5px solid rgba(255,255,255,0.45)'
+              }}
+            >
+              {/* Multiples reflets d'éclat sphérique */}
+              <div className="absolute top-[15%] left-[15%] w-[30%] h-[30%] bg-white rounded-full opacity-65 blur-[0.5px]" />
+              <div className="absolute bottom-[18%] right-[18%] w-[15%] h-[15%] bg-white rounded-full opacity-40 blur-[0.5px]" />
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
       
     </div>
   );
