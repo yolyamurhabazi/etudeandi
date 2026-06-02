@@ -268,93 +268,29 @@ export default function App() {
     }
   };
 
-  // Lance l'étude d'une matière
+  // Lance l'étude d'une matière (Toujours en local hors-ligne)
   const startSession = (categoryKey: CategoryKey, useAi: boolean = false, customLength: number = sessionLength) => {
     setSelectedCategory(categoryKey);
-    setIsAiMode(useAi);
+    setIsAiMode(false);
     setTutorExplanation(null);
     setRevealedHint(null);
     setAnsweredOptions(new Set());
     setAiError(null);
 
-    if (useAi) {
-      // Démarrer une session vide et générer la première question
-      setSession({
-        category: categoryKey,
-        questions: [],
-        currentQuestionIndex: 0,
-        attempts: {},
-        isCorrectChosen: false,
-        score: 0,
-        completed: false
-      });
-      generateNextAiQuestion(categoryKey, true);
-    } else {
-      // Utiliser un lot mélangé de questions prédéfinies
-      const filtered = PREDEFINED_QUESTIONS.filter(q => q.category === categoryKey);
-      const shuffled = [...filtered].sort(() => 0.5 - Math.random());
-      const selectedQuestions = shuffled.slice(0, Math.min(customLength, filtered.length));
+    // Utiliser un lot mélangé de questions prédéfinies
+    const filtered = PREDEFINED_QUESTIONS.filter(q => q.category === categoryKey);
+    const shuffled = [...filtered].sort(() => 0.5 - Math.random());
+    const selectedQuestions = shuffled.slice(0, Math.min(customLength, filtered.length));
 
-      setSession({
-        category: categoryKey,
-        questions: selectedQuestions,
-        currentQuestionIndex: 0,
-        attempts: {},
-        isCorrectChosen: false,
-        score: 0,
-        completed: false
-      });
-    }
-  };
-
-  // Requête API pour générer une question par IA
-  const generateNextAiQuestion = async (category: CategoryKey, isFirst: boolean = false) => {
-    setIsGeneratingQuestion(true);
-    setAiError(null);
-    try {
-      const response = await fetch('/api/gemini/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ category })
-      });
-
-      if (!response.ok) {
-        throw new Error("L'IA n'a pas pu créer la question. Vérifiez la clé API.");
-      }
-
-      const newQuestion: Question = await response.json();
-
-      setSession(prev => {
-        if (!prev) return null;
-        const updatedQuestions = isFirst ? [newQuestion] : [...prev.questions, newQuestion];
-        return {
-          ...prev,
-          questions: updatedQuestions,
-          currentQuestionIndex: isFirst ? 0 : prev.questions.length,
-          isCorrectChosen: false
-        };
-      });
-      setAnsweredOptions(new Set());
-      setTutorExplanation(null);
-      setRevealedHint(null);
-    } catch (err: any) {
-      console.error(err);
-      setAiError("Oups ! Nous n'avons pas pu charger une question par l'IA. Commençons avec nos questions classiques !");
-      // Fallback automatique vers le mode standard si l'IA échoue
-      setIsAiMode(false);
-      const filtered = PREDEFINED_QUESTIONS.filter(q => q.category === category);
-      setSession({
-        category,
-        questions: filtered,
-        currentQuestionIndex: 0,
-        attempts: {},
-        isCorrectChosen: false,
-        score: 0,
-        completed: false
-      });
-    } finally {
-      setIsGeneratingQuestion(false);
-    }
+    setSession({
+      category: categoryKey,
+      questions: selectedQuestions,
+      currentQuestionIndex: 0,
+      attempts: {},
+      isCorrectChosen: false,
+      score: 0,
+      completed: false
+    });
   };
 
   // Traiter la sélection d'une réponse
@@ -414,12 +350,7 @@ export default function App() {
 
     const isLast = session.currentQuestionIndex === session.questions.length - 1;
 
-    // Si on est en mode IA et qu'on n'a pas encore atteint le nombre de questions de la session
-    if (isAiMode && session.questions.length < sessionLength) {
-      generateNextAiQuestion(session.category);
-    } 
-    // Sinon si c'est la dernière de notre lot
-    else if (isLast || session.questions.length >= sessionLength) {
+    if (isLast) {
       // Sauvegarder la session complétée dans l'historique
       const newHistoryEntry = {
         id: `hist-${Date.now()}`,
@@ -427,7 +358,7 @@ export default function App() {
         score: session.score,
         questionsCount: session.questions.length,
         date: new Date().toLocaleDateString('fr-FR'),
-        isAi: isAiMode,
+        isAi: false,
         attempts: session.attempts,
         questions: session.questions
       };
@@ -459,8 +390,8 @@ export default function App() {
     }
   };
 
-  // Obtenir de l'aide de l'IA (Maître Jean-Pierre)
-  const fetchTutorHelp = async () => {
+  // Obtenir de l'aide de Maître Jean-Pierre (Tuteur Local hors-ligne)
+  const fetchTutorHelp = () => {
     if (!session) return;
     setIsLoadingExplanation(true);
     setTutorExplanation(null);
@@ -468,38 +399,21 @@ export default function App() {
     const currentQuestion = session.questions[session.currentQuestionIndex];
     const isCorrectCategory = session.isCorrectChosen;
     
-    // Déterminer la réponse incorrecte la plus récente si applicable
-    const lastWrongOptionIndex = Array.from(answeredOptions).pop();
-    const selectedOptionText = lastWrongOptionIndex !== undefined ? currentQuestion.options[lastWrongOptionIndex] : "aucune";
-
-    try {
-      const response = await fetch('/api/gemini/explain', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          question: currentQuestion,
-          selectedOption: selectedOptionText,
-          isCorrectCategory
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error("L'IA n'est pas disponible pour l'instant.");
-      }
-
-      const data = await response.json();
-      setTutorExplanation(data.explanation);
-    } catch (err: any) {
-      console.error(err);
-      // Fallback si l'IA échoue
+    // Simuler un léger temps de réflexion de Maître Jean-Pierre (450ms)
+    setTimeout(() => {
       if (isCorrectCategory) {
-        setTutorExplanation(`C'est exact ! Car : ${currentQuestion.explanation || 'Excellent calcul.'}`);
+        setTutorExplanation(`**Félicitations pour ta bonne réponse !** 🎉\n\nVoici l'explication complète de Maître Jean-Pierre :\n\n> *${currentQuestion.explanation || "Excellent esprit d'analyse ! Continue sur cette voie."}*`);
       } else {
-        setTutorExplanation("Pense bien à relire la question attentivement. Élimine les réponses impossibles et cherche le petit mot caché ou la règle logique. Tu as tout le talent nécessaire pour trouver !");
+        const lastWrongOptionIndex = Array.from(answeredOptions).pop();
+        if (lastWrongOptionIndex !== undefined) {
+          const selectedOptionText = currentQuestion.options[lastWrongOptionIndex];
+          setTutorExplanation(`**Maître Jean-Pierre t'accompagne :** 💡\n\nTu as proposé l'assertion *"${selectedOptionText}"*, mais ce n'est pas tout à fait correct.\n\n**Voici un indice précieux :**\n${getQuestionHint(currentQuestion)}\n\n*Pense à éliminer ce choix et réessaye avec courage !*`);
+        } else {
+          setTutorExplanation(`**Besoin d'aide sur cette question ?** 💡\n\nMaître Jean-Pierre te chuchote un indice :\n> *${getQuestionHint(currentQuestion)}*\n\n*Relis attentivement chaque assertion avant de choisir !*`);
+        }
       }
-    } finally {
       setIsLoadingExplanation(false);
-    }
+    }, 450);
   };
 
   // Revenir au panneau de sélection d'étude
@@ -735,23 +649,14 @@ export default function App() {
                             <p className="text-xs text-slate-600 mt-1 leading-relaxed">{cat.description}</p>
                           </div>
 
-                          <div className="flex flex-col gap-2 mt-2">
-                            {/* Bouton Classique */}
+                           <div className="flex flex-col gap-2 mt-2">
+                            {/* Bouton Classique d'Entraînement */}
                             <button
                               onClick={() => startSession(cat.key, false)}
-                              className="w-full bg-[#5A5A40] hover:bg-[#4A4A34] text-white font-bold text-xs py-2.5 px-4 rounded-xl flex items-center justify-center gap-1.5 transition shadow-xs active:scale-95 cursor-pointer"
+                              className="w-full bg-[#5A5A40] hover:bg-[#4A4A34] text-white font-black text-xs py-3 px-4 rounded-xl flex items-center justify-center gap-1.5 transition shadow-xs active:scale-95 cursor-pointer"
                             >
-                              S'entraîner (Questions Officielles)
+                              🚀 Démarrer l'Entraînement
                               <ChevronRight className="w-4 h-4" />
-                            </button>
-
-                            {/* Bouton IA */}
-                            <button
-                              onClick={() => startSession(cat.key, true)}
-                              className="w-full bg-[#EAE4D9] text-[#5A5A40] border border-[#C8C0B0] font-black text-xs py-2.5 px-4 rounded-xl flex items-center justify-center gap-1.5 hover:bg-[#D9D1C2] transition shadow-xs active:scale-95 cursor-pointer"
-                            >
-                              <Sparkles className="w-3.5 h-3.5 text-[#5A5A40] fill-[#5A5A40] animate-pulse" />
-                              Questions Infinies avec l'IA
                             </button>
                           </div>
                         </div>
@@ -883,7 +788,7 @@ export default function App() {
 
                   <div className="flex items-center gap-2">
                     <span className="text-xs bg-[#EAE4D9]/80 text-[#5A564D] border border-[#E6DFD3]/80 font-bold px-3 py-1.5 rounded-xl">
-                      {isAiMode ? "🚀 Générations IA illimitées" : "📋 Questions Officielles"}
+                      📋 Questions Officielles ENAFEP
                     </span>
                     <span className="text-xs bg-[#F5F1E9] text-[#5A5A40] border border-[#E6DFD3] font-bold px-3 py-1.5 rounded-xl">
                       Matière : <span className="underline font-extrabold">{getCategoryDetails(session.category)?.label}</span>
@@ -1051,18 +956,17 @@ export default function App() {
                           💡 Révéler un indice
                         </button>
 
-                        {/* Demande IA */}
+                         {/* Demande d'explication de Maître Jean-Pierre */}
                         <button
                           onClick={fetchTutorHelp}
                           disabled={isLoadingExplanation}
-                          className="bg-[#EAE4D9]/80 hover:bg-[#D9D1C2] border border-[#C8C0B0] text-[#5A5A40] font-bold text-xs px-4 py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95 disabled:opacity-60 cursor-pointer"
+                          className="bg-[#EAE4D9]/80 hover:bg-[#D9D1C2] border border-[#C8C0B0] text-[#5A5A40] font-black text-xs px-4 py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95 disabled:opacity-60 cursor-pointer"
                         >
                           {isLoadingExplanation ? (
                             <RefreshCw className="w-3.5 h-3.5 animate-spin" />
                           ) : (
-                            <Sparkles className="w-3.5 h-3.5 text-[#5A5A40] fill-[#5A5A40]" />
+                            <span>👨‍🏫 Explications du Maître</span>
                           )}
-                          Besoin d’un indice ? (Aide IA)
                         </button>
                       </div>
 
@@ -1076,7 +980,7 @@ export default function App() {
                             : 'bg-[#E6DFD3] text-[#8C867A] cursor-not-allowed shadow-none'
                         }`}
                       >
-                        {session.currentQuestionIndex === (isAiMode ? 4 : session.questions.length - 1) ? "Terminer l'examen 🎓" : "Question Suivante"}
+                        {session.currentQuestionIndex === session.questions.length - 1 ? "Terminer l'examen 🎓" : "Question Suivante"}
                         <ChevronRight className="w-4 h-4" />
                       </button>
                     </div>
@@ -1160,7 +1064,7 @@ export default function App() {
                   </div>
 
                   <div className="text-[10px] text-[#8C867A] font-medium">
-                    * Maître Jean-Pierre s'appuie sur le modèle de pointe de Google Gemini pour prodiguer ses explications de manière claire et bienveillante.
+                    * Maître Jean-Pierre s'appuie sur le programme officiel du Ministère de l'Enseignement Primaire, Secondaire et Technique (EPST) en RDC.
                   </div>
                 </div>
 
@@ -1339,22 +1243,21 @@ export default function App() {
 
               </div>
 
-              {/* Actions de redirection */}
+               {/* Actions de redirection */}
               <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
                 <button
                   onClick={exitSession}
-                  className="bg-[#5A5A40] text-white font-extrabold text-xs px-6 py-3 rounded-2xl flex items-center gap-1 shadow-xs hover:bg-[#4A4A34] transition active:scale-95 cursor-pointer"
+                  className="bg-white text-[#5A5A40] border-2 border-[#5A5A40] font-black text-xs px-6 py-3 rounded-2xl flex items-center justify-center gap-1.5 shadow-xs hover:bg-[#FDFBF7] transition active:scale-95 cursor-pointer"
                 >
                   <RotateCcw className="w-4 h-4" />
-                  Retourner au tableau de bord
+                  Tableau de bord
                 </button>
 
                 <button
-                  onClick={() => startSession(session.category, true)}
-                  className="bg-[#EAE4D9] text-[#5A5A40] border border-[#C8C0B0] font-black text-xs px-6 py-3 rounded-2xl flex items-center gap-2 shadow-xs hover:bg-[#D9D1C2] transition active:scale-95 cursor-pointer"
+                  onClick={() => startSession(session.category, false)}
+                  className="bg-[#5A5A40] text-white font-black text-xs px-6 py-3 rounded-2xl flex items-center justify-center gap-1.5 shadow-xs hover:bg-[#4A4A34] transition active:scale-95 cursor-pointer"
                 >
-                  <Sparkles className="w-4 h-4 text-[#5A5A40] fill-[#5A5A40] animate-pulse" />
-                  Générer une autre session IA illimitée
+                  🔄 Recommencer l'entraînement
                 </button>
               </div>
 
